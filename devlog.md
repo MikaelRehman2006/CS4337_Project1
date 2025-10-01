@@ -1,0 +1,4 @@
+# Sept 30 1:33 pm
+
+I have read over the project, and I understand that the way the program works is that initally the user enters a mathematical expression in prefix notation. The result is added to a list using cons, and each result is associated with an ID, starting from 1 for the first result and incrementing for each new result. When a result is calculated, it is printed to the screen with its corresponding history ID.
+The program also continuously prompts the user for input and evaluates the expression provided. The user can enter expressions or type quit to exit the program. This is for interactive mode only. In batch mode, the program reads an expression from the command-line arguments or input file (in this simplified version, it's from the command line). The result of the expression is printed, and the program doesn't ask for further input. Lastly from what I know this program will also have ot include error handling.
