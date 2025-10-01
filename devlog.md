@@ -10,3 +10,15 @@ My goal right now is to set up the program and handle whether it runs in interac
 # Sept 30 8:45
 
 I did finish my goal for this session. I added this: #lang racket: This sets the language for the program to Racket. Next I implemented the mode detection. I am using (current-command-line-arguments) to check if the program is in batch mode (via the -b flag) or interactive mode.
+
+I will be taking a break, and when I come back I will start the next session, which will be about working on parsing the input expression and splitting it into tokens.
+
+# Sept 9:00 pm
+
+No thoughts when starting this session, I will give a recap when I end this session on what I have done.
+
+# Sept 9:34 pm
+
+I have added code that prints a prompt that asks the user to enter a prefix expression. I used the (read) function to read the user input and then store it in "user-input". f the user enters (+ 1 2), user-input will be interpreted as (+ 1 2) (a list). I also wrote another line to display what the user typed so both I and the user can confirm the input was read correctly.
+
+After this I added a function called "start-program" this code uses an if statment to check the boolean value of "interactive?" if it true, it calls process-expression (which asks the user to enter an expression and evaluates it). Then it calls start-program again recursively, meaning it will prompt the user for input again and keep doing so until the user types quit. If interactive? is false, it will only call "process-expression", then quit.

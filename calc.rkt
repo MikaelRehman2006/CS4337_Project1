@@ -8,3 +8,14 @@
     (display "You entered: ")
     (display user-input)
     (newline))
+
+(define (start-program)
+    (if interactive?
+        (begin
+          (process-expression)
+          (start-program))
+        (begin
+            (display "Batch mode: single expression evaluation\n")
+            (process-expression))))
+
+(start-program)
