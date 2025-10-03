@@ -4,10 +4,15 @@
 
 (define (process-expression)
     (display "Enter an expression: ")
-    (define user-input(read))
-    (display "You entered: ")
-    (display user-input)
-    (newline))
+    (define user-input (read))
+    (with-handlers ([exn:fail? 
+                     (lambda (e) 
+                       (display "Error: Invalid Expression\n"))])
+        (define result (eval user-input))
+        (display "Result: ")
+        (display result)
+        (newline)))
+
 
 (define (start-program)
     (if interactive?
