@@ -8,13 +8,22 @@
     (with-handlers ([exn:fail? 
                      (lambda (e) 
                        (display "Error: Invalid Expression\n"))])
-
-
-
+        ;; evlauate the expression
         (define result (eval user-input))
-        (display "Result: ")
+
+        ;; add result to history (front of list)
+        (define new-history (cons result history))
+
+        ;; calculate history id (number of results in new-history)
+        (define history-id (+ 1 (length history))) ;; first result = 1
+
+        (display history-id)
+        (display ": ")
         (display result)
-        (newline)))
+        (newline)
+
+        ;; return updated history
+        new-history))
 
 
 (define (start-program history)

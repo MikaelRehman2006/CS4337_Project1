@@ -30,3 +30,11 @@ My current goal is to figure out and start the implementation of error handling,
 # Oct 2 11:48
 
 This is the end of my session, I had to research on how to do exceptions as it was confusing to me. I first used a function called with-handlers which is able to catch exceptions that occur inside of a block of code. I was confused about how the function with-handlers worked in terms of why it needed a predicate. The predicate I used was the function "exn:fail?", which checks if the exception is a failure type. If the exception satifies the predicate I put in, it calls (lambda (e) ...). This just displays an error message.
+
+# Oct 5 1:17 AM
+
+I am looking to get started with history related code. No other specific thoughts.
+
+# Oct 5 2:36 AM
+
+I added a history parameter to track all previous results. Every time an expression is successfully evaluated, the result is added to the front of the history list, and it is displayed with a history ID. Also the original process-expression function now returns the updated story so it can be used in subsequent evaluations.
