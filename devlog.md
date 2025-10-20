@@ -38,3 +38,29 @@ I am looking to get started with history related code. No other specific thought
 # Oct 5 2:36 AM
 
 I added a history parameter to track all previous results. Every time an expression is successfully evaluated, the result is added to the front of the history list, and it is displayed with a history ID. Also the original process-expression function now returns the updated story so it can be used in subsequent evaluations.
+
+# Oct 19 5:30 PM
+
+So right now my start-program is called again with the old history (the list before the new result was added). I have to fix this by storing the returned value we get from process-expression and then using it in a recursive call. After this I want to allow users to reuse previous results by typing something like: (+ $1 5):
+This means:
+$1 should be replaced with the first result in history
+$2 should be replaced with the second, and so on.
+
+# Oct 19 7:30 pm
+
+What I have completed in this session was that I firstly updated the programs main loop so that each time an expression is evaluated, the updated history list is then passed forward to the next iteration. This change makes sure that the previously computed results are stored and also preserved throughout the session
+
+After this I started and essentially finished the history reference support (%n)
+
+The first step I did was I created the helper function get-history-index, which detects symbols like $1, $2, etc., and extracts their numeric part.
+The next step I did was that I added the recursive replace-history-refs function that walks through the user’s expression and substitutes each $n symbol with the corresponding value from the history list.
+The last step I did was I integrated this placement step into process-expression, so for example expressions like (+ $1 5) are able to correctly use the stored values before evaluation.
+
+At this point, the calculator is fully supporting
+
+- Continuous expression evaluation (interactive mode)
+- Safe error handling with with-handlers
+- Persistent result history
+- $n substitutions for reusing previous outputs
+
+In the next session, which I am hoping to be later today, I am planning on doing some polishing. This would be adding a way for the user to quit (e.g., if input is 'quit or 'exit). I will also be adding a way print the full history before exiting. Lastly, I may add some extra stuff if it is needed, and do some testing to fix some potential bugs,
