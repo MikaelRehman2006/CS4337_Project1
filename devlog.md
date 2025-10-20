@@ -64,3 +64,32 @@ At this point, the calculator is fully supporting
 - $n substitutions for reusing previous outputs
 
 In the next session, which I am hoping to be later today, I am planning on doing some polishing. This would be adding a way for the user to quit (e.g., if input is 'quit or 'exit). I will also be adding a way print the full history before exiting. Lastly, I may add some extra stuff if it is needed, and do some testing to fix some potential bugs,
+
+# Oct 19 8:15pm
+
+Same thoughts as what I mentioned when I ended last session, starting now
+
+# Oct 19 12:01
+
+I have made many more changes and additions after testing:
+
+I added more for the quit and exit flow. I added the support for quit/exit in interactive mode. On quit the program prints the full history, which is IDs and values, and then it exits cleanly.
+
+For prompting and output rules, the prompt only appears in interactive mode. In batch mode there is no prompt and the program only prints the results or Error: lines.
+
+For batch over multiple expressions, I extended the batch mode to process all expressions until EOF (not just one). Added an EOF guard so #<eof> is not treated as an expressions.
+
+I made a fix regarding the history stability of errors, I updated the error handler to return the existing history after printing Error: Invalid Expression, so the loop keeps running without crashing.
+
+I also replaced Racket’s eval with a small recursive evaluator that enforces:
+
+- and \*: binary only (exactly two operands)
+  /: binary integer division via quotient (both operands must be integers; error on divide-by-zero)
+  -: unary negation only (exactly one operand; no subtraction)
+  Any wrong arity, non-integer for /, bad operator is a Error: Invalid Expression
+
+Next I made it so immediate results are printed as floats using real->double-flonum.
+
+$n substitution remains in place and now works in batch as well.
+
+Lastly, I did a general polish where interactive loop carries the history forward, the batch history starts with a fresh history per run, and error handling an output formatting are consistent across modes.
