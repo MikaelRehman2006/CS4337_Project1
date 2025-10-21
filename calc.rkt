@@ -1,12 +1,12 @@
 #lang racket
 
-;; --- MODE DETECTION ---
+;; The mode detection
 (define interactive?
   (not (member "-b" (vector->list (current-command-line-arguments)))))
 
-;; --- HELPER FUNCTIONS ---
+;; The helper functions
 
-;; Check if a symbol is a $n history reference
+;; this is checking if a symbol is a $n history reference
 (define (get-history-index sym)
   (if (and (symbol? sym)
            (regexp-match #rx"^\\$[0-9]+$" (symbol->string sym)))
@@ -19,9 +19,9 @@
       (error "Invalid Expression")
       (list-ref (reverse history) (- id 1))))
 
-;; --- TOKENIZATION ---
+;; The tokenization
 
-;; Skip whitespace and return remaining characters
+;; this skips whitespace and return remaining characters
 (define (skip-whitespace chars)
   (cond
     [(null? chars) '()]
@@ -59,7 +59,7 @@
     
     [else (error "Invalid Expression")]))
 
-;; --- EXPRESSION EVALUATION ---
+;; The expression evaluator
 
 ;; Evaluate expression from character list
 ;; Returns (list result remaining-chars)
@@ -129,7 +129,7 @@
       
       [else (error "Invalid Expression")])))
 
-;; --- MAIN PROCESSING ---
+;; The main processing
 
 (define (process-expression line history)
   ;; Remove all whitespace from ends including \r\n
@@ -145,13 +145,13 @@
                         (display "Error: Invalid Expression\n")
                         history)])
        
-       ;; Parse and evaluate the expression
+       ;; parse and evaluate the expression
        (let* ([chars (string->list clean-line)]
               [result-pair (eval-expr chars history)]
               [result (car result-pair)]
               [remaining (cadr result-pair)])
          
-         ;; Check if there's remaining text (error)
+         ;; check if there's remaining text (error)
          (let ([remaining-clean (skip-whitespace remaining)])
            (unless (null? remaining-clean)
              (error "Invalid Expression")))
@@ -167,7 +167,7 @@
          
          new-history))]))
 
-;; --- MAIN LOOP ---
+;; The main loop
 
 (define (start-program history)
   (define (loop current-history)
