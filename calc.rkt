@@ -1,115 +1,193 @@
 #lang racket
 
+;; --- MODE DETECTION ---
 (define interactive?
   (not (member "-b" (vector->list (current-command-line-arguments)))))
 
-(define eval-ns (make-base-namespace))
+;; --- HELPER FUNCTIONS ---
 
-;; Helper: check if a symbol is a $n reference and return its index
+;; Check if a symbol is a $n history reference
 (define (get-history-index sym)
   (if (and (symbol? sym)
            (regexp-match #rx"^\\$[0-9]+$" (symbol->string sym)))
       (string->number (substring (symbol->string sym) 1))
       #f))
 
-(define (replace-history-refs expr history)
+;; Get value from history by id
+(define (get-history-value history id)
+  (if (or (< id 1) (> id (length history)))
+      (error "Invalid Expression")
+      (list-ref (reverse history) (- id 1))))
+
+;; --- TOKENIZATION ---
+
+;; Skip whitespace and return remaining characters
+(define (skip-whitespace chars)
   (cond
-    ;; If it's a list, recursively process each element
-    [(list? expr)
-     (map (lambda (e) (replace-history-refs e history)) expr)]
+    [(null? chars) '()]
+    [(char-whitespace? (car chars)) (skip-whitespace (cdr chars))]
+    [else chars]))
 
-    ;; If it's a symbol like $1, $2, etc.
-    [(symbol? expr)
-     (let ([index (get-history-index expr)])
-       (if (and index (<= index (length history)))
-           (list-ref (reverse history) (- index 1))  ; fetch value from history
-           expr))]  ; leave unchanged if not found
-
-    ;; Otherwise (number, string, etc.), just return as is
-    [else expr]))
-
-;; strict evaluator to satisfy project operator rules
-(define (eval-expr expr)
+;; Read next token from character list
+;; Returns (list token remaining-chars)
+(define (read-token chars)
+  (define clean-chars (skip-whitespace chars))
+  
   (cond
-    [(number? expr) expr]
-    [(list? expr)
-     (if (null? expr) (error "Invalid Expression")
-         (let* ([op (car expr)]
-                [args (cdr expr)]
-                [argc (length args)])
-           (cond
-             [(and (symbol? op) (eq? op '+))
-              (unless (= argc 2) (error "Invalid Expression"))
-              (let ([a (eval-expr (first args))]
-                    [b (eval-expr (second args))])
-                (if (and (number? a) (number? b)) (+ a b) (error "Invalid Expression")))]
-             [(and (symbol? op) (eq? op '*))
-              (unless (= argc 2) (error "Invalid Expression"))
-              (let ([a (eval-expr (first args))]
-                    [b (eval-expr (second args))])
-                (if (and (number? a) (number? b)) (* a b) (error "Invalid Expression")))]
-             [(and (symbol? op) (eq? op '/))
-              (unless (= argc 2) (error "Invalid Expression"))
-              (let ([a (eval-expr (first args))]
-                    [b (eval-expr (second args))])
-                (if (and (integer? a) (integer? b) (not (= b 0)))
-                    (quotient a b)
-                    (error "Invalid Expression")))]
-             [(and (symbol? op) (eq? op '-))
-              (unless (= argc 1) (error "Invalid Expression"))
-              (let ([a (eval-expr (first args))])
-                (if (number? a) (- a) (error "Invalid Expression")))]
-             [else (error "Invalid Expression")])))]
+    [(null? clean-chars) (list #f '())]
+    
+    ;; Operators: +, *, /, -
+    [(member (car clean-chars) '(#\+ #\* #\/ #\-))
+     (list (car clean-chars) (cdr clean-chars))]
+    
+    ;; History reference: $n
+    [(char=? (car clean-chars) #\$)
+     (let-values ([(num-chars rest) (splitf-at (cdr clean-chars) char-numeric?)])
+       (if (null? num-chars)
+           (error "Invalid Expression")
+           (list (string->symbol (list->string (cons #\$ num-chars))) rest)))]
+    
+    ;; Number (integer or float)
+    [(or (char-numeric? (car clean-chars))
+         (char=? (car clean-chars) #\.))
+     (let-values ([(num-chars rest) 
+                   (splitf-at clean-chars (lambda (c) (or (char-numeric? c) (char=? c #\.))))])
+       (let ([num (string->number (list->string num-chars))])
+         (if num
+             (list num rest)
+             (error "Invalid Expression"))))]
+    
     [else (error "Invalid Expression")]))
 
-(define (process-expression history)
-  (when interactive? (display "Enter an expression: "))
-  (define user-input (read))
+;; --- EXPRESSION EVALUATION ---
 
-  ;; Stop reading at end of file (batch mode only)
-  (when (eof-object? user-input)
-    (exit))
+;; Evaluate expression from character list
+;; Returns (list result remaining-chars)
+(define (eval-expr chars history)
+  (let* ([token-pair (read-token chars)]
+         [token (car token-pair)]
+         [rest (cadr token-pair)])
+    
+    (cond
+      ;; No token (EOF)
+      [(not token) (error "Invalid Expression")]
+      
+      ;; Number literal
+      [(number? token) (list token rest)]
+      
+      ;; History reference $n
+      [(symbol? token)
+       (let ([idx (get-history-index token)])
+         (if idx
+             (list (get-history-value history idx) rest)
+             (error "Invalid Expression")))]
+      
+      ;; Unary minus
+      [(char=? token #\-)
+       (let* ([result-pair (eval-expr rest history)]
+              [result (car result-pair)]
+              [remaining (cadr result-pair)])
+         (if (number? result)
+             (list (- result) remaining)
+             (error "Invalid Expression")))]
+      
+      ;; Binary operator: +
+      [(char=? token #\+)
+       (let* ([result1-pair (eval-expr rest history)]
+              [result1 (car result1-pair)]
+              [rest1 (cadr result1-pair)]
+              [result2-pair (eval-expr rest1 history)]
+              [result2 (car result2-pair)]
+              [rest2 (cadr result2-pair)])
+         (if (and (number? result1) (number? result2))
+             (list (+ result1 result2) rest2)
+             (error "Invalid Expression")))]
+      
+      ;; Binary operator: *
+      [(char=? token #\*)
+       (let* ([result1-pair (eval-expr rest history)]
+              [result1 (car result1-pair)]
+              [rest1 (cadr result1-pair)]
+              [result2-pair (eval-expr rest1 history)]
+              [result2 (car result2-pair)]
+              [rest2 (cadr result2-pair)])
+         (if (and (number? result1) (number? result2))
+             (list (* result1 result2) rest2)
+             (error "Invalid Expression")))]
+      
+      ;; Binary operator: /
+      [(char=? token #\/)
+       (let* ([result1-pair (eval-expr rest history)]
+              [result1 (car result1-pair)]
+              [rest1 (cadr result1-pair)]
+              [result2-pair (eval-expr rest1 history)]
+              [result2 (car result2-pair)]
+              [rest2 (cadr result2-pair)])
+         (if (and (integer? result1) (integer? result2) (not (= result2 0)))
+             (list (quotient result1 result2) rest2)
+             (error "Invalid Expression")))]
+      
+      [else (error "Invalid Expression")])))
 
-  (when (or (equal? user-input 'quit)
-            (equal? user-input 'exit))
-    (display "\nExiting program. Final history:\n")
-    (for ([i (in-range (length history))])
-      (display (format "~a: ~a\n" (+ i 1) (list-ref (reverse history) i))))
-    (display "Goodbye!\n")
-    (exit))
+;; --- MAIN PROCESSING ---
 
-  (with-handlers ([exn:fail?
-                   (lambda (e)
-                     (display "Error: Invalid Expression\n")
-                     history)])
-    ;; replace $n with history values before evaluation
-    (define expr-with-values (replace-history-refs user-input history))
+(define (process-expression line history)
+  ;; Remove all whitespace from ends including \r\n
+  (define clean-line (string-trim line))
+  
+  (cond
+    ;; Check for quit
+    [(equal? clean-line "quit") (exit)]
+    
+    [else
+     (with-handlers ([exn:fail?
+                      (lambda (e)
+                        (display "Error: Invalid Expression\n")
+                        history)])
+       
+       ;; Parse and evaluate the expression
+       (let* ([chars (string->list clean-line)]
+              [result-pair (eval-expr chars history)]
+              [result (car result-pair)]
+              [remaining (cadr result-pair)])
+         
+         ;; Check if there's remaining text (error)
+         (let ([remaining-clean (skip-whitespace remaining)])
+           (unless (null? remaining-clean)
+             (error "Invalid Expression")))
+         
+         ;; Add to history and print result
+         (define new-history (cons result history))
+         (define history-id (length new-history))
+         
+         (display history-id)
+         (display ": ")
+         (display (real->double-flonum result))
+         (newline)
+         
+         new-history))]))
 
-    ;; evaluate the substituted expression
-    (define result (eval-expr expr-with-values))
-
-    ;; add result to history (front of list)
-    (define new-history (cons result history))
-
-    ;; calculate history id
-    (define history-id (+ 1 (length history)))
-
-    ;; show result
-    (display history-id)
-    (display ": ")
-    (display (if (number? result) (real->double-flonum result) result))
-    (newline)
-
-    ;; return updated history
-    new-history))
+;; --- MAIN LOOP ---
 
 (define (start-program history)
-  (if interactive?
-      (let ([new-history (process-expression history)])  ; use let instead of define
-        (start-program new-history))                    ; pass updated history
-      (let loop ([current-history history])
-        (unless (eof-object? (peek-char))
-          (let ([new-history (process-expression current-history)])
-            (loop new-history))))))
+  (define (loop current-history)
+    (when interactive? (display "> "))
+    
+    (let ([input (read-line)])
+      (cond
+        ;; EOF
+        [(eof-object? input) (exit)]
+        
+        ;; Skip empty lines
+        [(string=? (string-trim input) "")
+         (loop current-history)]
+        
+        ;; Process expression
+        [else
+         (let ([new-history (process-expression input current-history)])
+           (loop new-history))])))
+  
+  (loop history))
 
+;; Start the program
 (void (start-program '()))

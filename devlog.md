@@ -93,3 +93,21 @@ Next I made it so immediate results are printed as floats using real->double-flo
 $n substitution remains in place and now works in batch as well.
 
 Lastly, I did a general polish where interactive loop carries the history forward, the batch history starts with a fresh history per run, and error handling an output formatting are consistent across modes.
+
+# Oct 20 11:05 pm
+
+Currently I am reviewing the instructions to see if it entirely matches with how the program is supposed to work. That is it as I am unsure if it needs any fixing.
+
+# Oct 21 1:08 AM
+
+I have made many changes, and I believe I am finally done.
+First I completed the parsing rewrite, before I was using racket's built in read function which expects S-expressions with parentheses. I have now implemted the manual tokenization and parsing to handle the prefix notation without the parentheses. I realized that te project requirements explicitly state expressions should be in prefix notation read left-to-right without requiring parentheses around operations.
+
+Input handling:
+Next, as before I mentioned I used rackets old read function. I have switched to (read-line) to get the raw string input, then it parses character by character. I also added the skip-whitespace helper to properly handle spacing.
+
+Next in terms of my old evaluation strategy, the program used to rcursively evaluate pre-structured lists. Now it is a recursive descent parser that builds and evaluates expressions on the fly. I would say the key difference is that eval-expr now returns a two element list (list result remaining-chars) as it was specified in project instructions, not dotted pairs.
+
+Next, I added string-trim to handle Windows line endings (\r\n) in batch mode.
+
+Lastly I improved the Error Handling. I maintained the generic "Error: Invalid Expression" messages as per requirements. But I have also made it so there is better handling of the edge cases such as divison by zero, malformed tokens, and extra text after valid expressions.
